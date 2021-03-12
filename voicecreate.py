@@ -1,12 +1,19 @@
 import discord
+import math
+import asyncio
+import aiohttp
+import json
 from discord.ext import commands
+from random import randint
 import traceback
+import sqlite3
 import sys
+import os
 
 bot = commands.Bot(command_prefix=".")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN_VOICE_CHANNELS")
-
 bot.remove_command("help")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN_VOICE_CHANNELS")
+print(DISCORD_TOKEN)
 
 initial_extensions = ['cogs.voice']
 
