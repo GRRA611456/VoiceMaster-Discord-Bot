@@ -10,12 +10,14 @@ import sqlite3
 import sys
 import os
 
+client = discord.Client()
+
 bot = commands.Bot(command_prefix=".")
 bot.remove_command("help")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN_VOICE_CHANNELS")
 print(DISCORD_TOKEN)
 
-initial_extensions = ['cogs.voice']
+initial_extensions = ['cogs.vc']
 
 if __name__ == '__main__':
     for extension in initial_extensions:
