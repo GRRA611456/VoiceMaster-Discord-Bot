@@ -7,7 +7,7 @@ bot = commands.Bot(command_prefix=".")
 
 bot.remove_command("help")
 
-DISCORD_TOKEN = 'Enter Discord Token here'
+DISCORD_TOKEN = 'ODE0MDE5NTcwNzk2MDY4ODg1.YDXwzQ.K2AJrbEcKgZhhg_3cWZWsoXmYQY'
 
 initial_extensions = ['cogs.voice']
 
@@ -26,4 +26,4 @@ async def on_ready():
     print(bot.user.id)
     print('------')
 
-bot.run('ODE0MDE5NTcwNzk2MDY4ODg1.YDXwzQ.K2AJrbEcKgZhhg_3cWZWsoXmYQY')
+bot.run(DISCORD_TOKEN)
