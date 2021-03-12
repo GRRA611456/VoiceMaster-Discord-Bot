@@ -1,12 +1,19 @@
 import discord
+import math
 import asyncio
+import aiohttp
+import json
+import datetime
 from discord.ext import commands
 import traceback
 import sqlite3
+from urllib.parse import quote
 import validators
+from discord.ext.commands.cooldowns import BucketType
+from time import gmtime, strftime
 
 
-class voice(commands.Cog):
+class vc(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -60,14 +67,22 @@ class voice(commands.Cog):
                     await member.move_to(channel2)
                     await channel2.set_permissions(self.bot.user, connect=True,read_messages=True)
                     await channel2.edit(name= name, user_limit = limit)
-                    c.execute("INSERT INTO voiceChannel VALUES (?, ?)", (id,channelID))
+                    c.execute("INSERT INTO voiceChannel VALUES (?, ?, FALSE)", (id,channelID))
                     conn.commit()
                     def check(a,b,c):
-                        return len(channel2.members) == 0
+                        print('conn cursor')
+                        c2 = conn.cursor()
+                        print('SELECT')
+                        c2.execute("SELECT locked FROM voiceChannel WHERE userID = ?", (member.id))
+                        print('fetchone')
+                        locked = c2.fetchone()
+                        print(locked[0])
+                        return len(channel2.members) == 0# and locked[0] == 0
                     await self.bot.wait_for('voice_state_update', check=check)
                     await channel2.delete()
                     await asyncio.sleep(3)
                     c.execute('DELETE FROM voiceChannel WHERE userID=?', (id,))
+                    print('DELETE voiceChannel')
             except:
                 pass
         conn.commit()
@@ -76,22 +91,22 @@ class voice(commands.Cog):
     @commands.command()
     async def help(self, ctx):
         embed = discord.Embed(title="Help", description="",color=0x7289da)
-        embed.set_author(name=f"{ctx.guild.me.display_name}",url="https://discordbots.org/bot/472911936951156740", icon_url=f"{ctx.guild.me.avatar_url}")
-        embed.add_field(name=f'**Commands**', value=f'**Lock your channel by using the following command:**\n\n`.voice lock`\n\n------------\n\n'
-                        f'**Unlock your channel by using the following command:**\n\n`.voice unlock`\n\n------------\n\n'
-                        f'**Change your channel name by using the following command:**\n\n`.voice name <name>`\n\n**Example:** `.voice name EU 5kd+`\n\n------------\n\n'
-                        f'**Change your channel limit by using the following command:**\n\n`.voice limit number`\n\n**Example:** `.voice limit 2`\n\n------------\n\n'
-                        f'**Give users permission to join by using the following command:**\n\n`.voice permit @person`\n\n**Example:** `.voice permit @Sam#9452`\n\n------------\n\n'
-                        f'**Claim ownership of channel once the owner has left:**\n\n`.voice claim`\n\n**Example:** `.voice claim`\n\n------------\n\n'
-                        f'**Remove permission and the user from your channel using the following command:**\n\n`.voice reject @person`\n\n**Example:** `.voice reject @Sam#9452`\n\n', inline='false')
+        embed.set_author(name="Voice Create",url="https://discordbots.org/bot/472911936951156740", icon_url="https://i.imgur.com/i7vvOo5.png")
+        embed.add_field(name=f'**Commands**', value=f'**Set your channel Private by using the following command:**\n\n`.vc private`\n\n------------\n\n'
+                        f'**Set your channel Public by using the following command:**\n\n`.vc public`\n\n------------\n\n'
+                        f'**Change your channel name by using the following command:**\n\n`.vc name <name>`\n\n**Example:** `.vc name EU 5kd+`\n\n------------\n\n'
+                        f'**Change your channel limit by using the following command:**\n\n`.vc limit number`\n\n**Example:** `.vc limit 2`\n\n------------\n\n'
+                        f'**Give users permission to join by using the following command:**\n\n`.vc permit @person`\n\n**Example:** `.vc permit @Sam#9452`\n\n------------\n\n'
+                        f'**Claim ownership of channel once the owner has left:**\n\n`.vc claim`\n\n**Example:** `.vc claim`\n\n------------\n\n'
+                        f'**Remove permission and the user from your channel using the following command:**\n\n`.vc reject @person`\n\n**Example:** `.vc reject @Sam#9452`\n\n', inline='false')
         embed.set_footer(text='Bot developed by Sam#9452')
         await ctx.channel.send(embed=embed)
 
     @commands.group()
-    async def voice(self, ctx):
+    async def vc(self, ctx):
         pass
 
-    @voice.command()
+    @vc.command()
     async def setup(self, ctx):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
@@ -124,7 +139,7 @@ class voice(commands.Cog):
                             c.execute ("UPDATE guild SET guildID = ?, ownerID = ?, voiceChannelID = ?, voiceCategoryID = ? WHERE guildID = ?",(guildID,id,channel.id,new_cat.id, guildID))
                         await ctx.channel.send("**You are all setup and ready to go!**")
                     except:
-                        await ctx.channel.send("You didn't enter the names properly.\nUse `.voice setup` again!")
+                        await ctx.channel.send("You didn't enter the names properly.\nUse `.vc setup` again!")
         else:
             await ctx.channel.send(f"{ctx.author.mention} only the owner of the server can setup the bot!")
         conn.commit()
@@ -151,8 +166,40 @@ class voice(commands.Cog):
     async def info_error(self, ctx, error):
         print(error)
 
-    @voice.command()
+    @vc.command()
     async def lock(self, ctx):
+        conn = sqlite3.connect('voice.db')
+        c = conn.cursor()
+        id = ctx.author.id
+        c.execute("SELECT voiceID FROM voiceChannel WHERE userID = ?", (id,))
+        voice=c.fetchone()
+        if voice is None:
+            await ctx.channel.send(f"{ctx.author.mention} You don't own a channel.")
+        else:
+            channelID = voice[0]
+            c.execute("UPDATE voiceChannel SET locked = TRUE WHERE userID = ?", (id,))
+            await ctx.channel.send(f'{ctx.author.mention} Voice chat locked! 🔒')
+        conn.commit()
+        conn.close()
+
+    @vc.command()
+    async def unlock(self, ctx):
+        conn = sqlite3.connect('voice.db')
+        c = conn.cursor()
+        id = ctx.author.id
+        c.execute("SELECT voiceID FROM voiceChannel WHERE userID = ?", (id,))
+        voice=c.fetchone()
+        if voice is None:
+            await ctx.channel.send(f"{ctx.author.mention} You don't own a channel.")
+        else:
+            channelID = voice[0]
+            c.execute("UPDATE voiceChannel SET locked = FALSE WHERE userID = ?", (id,))
+            await ctx.channel.send(f'{ctx.author.mention} Voice chat unlocked! 🔒')
+        conn.commit()
+        conn.close()
+
+    @vc.command()
+    async def private(self, ctx):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
         id = ctx.author.id
@@ -165,12 +212,12 @@ class voice(commands.Cog):
             role = discord.utils.get(ctx.guild.roles, name='@everyone')
             channel = self.bot.get_channel(channelID)
             await channel.set_permissions(role, connect=False,read_messages=True)
-            await ctx.channel.send(f'{ctx.author.mention} Voice chat locked! 🔒')
+            await ctx.channel.send(f'{ctx.author.mention} Voice chat private! 🔒')
         conn.commit()
         conn.close()
 
-    @voice.command()
-    async def unlock(self, ctx):
+    @vc.command()
+    async def public(self, ctx):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
         id = ctx.author.id
@@ -183,11 +230,11 @@ class voice(commands.Cog):
             role = discord.utils.get(ctx.guild.roles, name='@everyone')
             channel = self.bot.get_channel(channelID)
             await channel.set_permissions(role, connect=True,read_messages=True)
-            await ctx.channel.send(f'{ctx.author.mention} Voice chat unlocked! 🔓')
+            await ctx.channel.send(f'{ctx.author.mention} Voice chat public! 🔓')
         conn.commit()
         conn.close()
 
-    @voice.command(aliases=["allow"])
+    @vc.command(aliases=["allow"])
     async def permit(self, ctx, member : discord.Member):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
@@ -204,7 +251,7 @@ class voice(commands.Cog):
         conn.commit()
         conn.close()
 
-    @voice.command(aliases=["deny"])
+    @vc.command(aliases=["deny"])
     async def reject(self, ctx, member : discord.Member):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
@@ -230,7 +277,7 @@ class voice(commands.Cog):
 
 
 
-    @voice.command()
+    @vc.command()
     async def limit(self, ctx, limit):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
@@ -254,7 +301,7 @@ class voice(commands.Cog):
         conn.close()
 
 
-    @voice.command()
+    @vc.command()
     async def name(self, ctx,*, name):
         conn = sqlite3.connect('voice.db')
         c = conn.cursor()
@@ -277,7 +324,7 @@ class voice(commands.Cog):
         conn.commit()
         conn.close()
 
-    @voice.command()
+    @vc.command()
     async def claim(self, ctx):
         x = False
         conn = sqlite3.connect('voice.db')
@@ -305,4 +352,4 @@ class voice(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(voice(bot))
+    bot.add_cog(vc(bot))
