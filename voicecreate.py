@@ -4,6 +4,7 @@ import traceback
 import sys
 
 bot = commands.Bot(command_prefix=".")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN_VOICE_CHANNELS")
 
 bot.remove_command("help")
 
