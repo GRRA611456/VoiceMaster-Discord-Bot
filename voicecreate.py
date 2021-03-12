@@ -7,8 +7,6 @@ bot = commands.Bot(command_prefix=".")
 
 bot.remove_command("help")
 
-DISCORD_TOKEN = 'ODE0MDE5NTcwNzk2MDY4ODg1.YDXwzQ.K2AJrbEcKgZhhg_3cWZWsoXmYQY'
-
 initial_extensions = ['cogs.voice']
 
 if __name__ == '__main__':
